@@ -15,33 +15,32 @@ RUN yum -y install httpd vim-enhanced bash-completion unzip; yum clean all;
 # RUN service mysqld start
 # RUN systemctl start mysqld
 
+RUN yum -y install --setopt=tsflags=nodocs epel-release && \ 
+    yum -y install --setopt=tsflags=nodocs mariadb-server bind-utils pwgen psmisc hostname && \ 
+    yum -y erase vim-minimal && \
+    yum -y update && yum clean all
 
 
-# Install MariaDB.
-RUN \
-  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0xcbcb082a1bb943db && \
-  echo "deb http://mariadb.mirror.iweb.com/repo/10.0/ubuntu `lsb_release -cs` main" > /etc/apt/sources.list.d/mariadb.list && \
-  apt-get update && \
-  DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server && \
-  rm -rf /var/lib/apt/lists/* && \
-  sed -i 's/^\(bind-address\s.*\)/# \1/' /etc/mysql/my.cnf && \
-  echo "mysqld_safe &" > /tmp/config && \
-  echo "mysqladmin --silent --wait=30 ping || exit 1" >> /tmp/config && \
-  echo "mysql -e 'GRANT ALL PRIVILEGES ON *.* TO \"root\"@\"%\" WITH GRANT OPTION;'" >> /tmp/config && \
-  bash /tmp/config && \
-  rm -f /tmp/config
+# Fix permissions to allow for running on openshift
+COPY fix-permissions.sh ./
+RUN ./fix-permissions.sh /var/lib/mysql/   && \
+    ./fix-permissions.sh /var/log/mariadb/ && \
+    ./fix-permissions.sh /var/run/
 
-# Define mountable directories.
-VOLUME ["/etc/mysql", "/var/lib/mysql"]
+COPY docker-entrypoint.sh /
 
-# Define working directory.
-WORKDIR /data
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
-# Define default command.
+# Place VOLUME statement below all changes to /var/lib/mysql
+VOLUME /var/lib/mysql
+
+# By default will run as random user on openshift and the mysql user (27)
+# everywhere else
+USER 27
+
+EXPOSE 3306
 CMD ["mysqld_safe"]
 
-# Expose ports.
-EXPOSE 3306
 
 # add repo to install php 5.5.X
 RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
