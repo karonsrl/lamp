@@ -31,19 +31,6 @@ RUN ./fix-permissions.sh /var/lib/mysql/   && \
 
 COPY docker-entrypoint.sh /
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
-# Place VOLUME statement below all changes to /var/lib/mysql
-VOLUME /var/lib/mysql
-
-# By default will run as random user on openshift and the mysql user (27)
-# everywhere else
-USER 27
-
-EXPOSE 3306
-CMD ["mysqld_safe"]
-
-
 # add repo to install php 5.5.X
 RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 
@@ -67,4 +54,16 @@ ADD phpinfo.php /var/www/html/
 ADD supervisord.conf /etc/
 EXPOSE 22 80
 EXPOSE 3306
-CMD ["supervisord", "-n"]
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# Place VOLUME statement below all changes to /var/lib/mysql
+VOLUME /var/lib/mysql
+
+# By default will run as random user on openshift and the mysql user (27)
+# everywhere else
+USER 27
+
+EXPOSE 3306
+
+CMD ["mysqld_safe", "supervisord", "-n"]
