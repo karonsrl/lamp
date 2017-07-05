@@ -6,7 +6,7 @@ MAINTAINER Riccardo Manuelli
 RUN yum -y install epel-release; yum clean all;
 
 # install httpd
-RUN yum -y install httpd vim-enhanced bash-completion unzip; yum clean all;
+RUN yum -y install httpd vim-enhanced bash-completion unzip mariadb; yum clean all;
 
 # install mysql
 #RUN yum install -y mariadb mariadb-server; yum clean all;
