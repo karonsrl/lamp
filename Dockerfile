@@ -13,7 +13,7 @@ RUN yum install -y mysql mysql-server; yum clean all;
 RUN echo "NETWORKING=yes" > /etc/sysconfig/network
 # start mysqld to create initial tables
 # RUN service mysqld start
-# RUN systemctl start mysqld
+RUN systemctl start mysqld
 
 # add repo to install php 5.5.X
 RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
@@ -37,4 +37,5 @@ VOLUME /var/www/html
 ADD phpinfo.php /var/www/html/
 ADD supervisord.conf /etc/
 EXPOSE 22 80
-CMD ["supervisord", "-n"]
+EXPOSE 3306
+CMD ["supervisord", "-n", "mysqld"]
