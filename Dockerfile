@@ -9,11 +9,12 @@ RUN yum -y install epel-release; yum clean all;
 RUN yum -y install httpd vim-enhanced bash-completion unzip; yum clean all;
 
 # install mysql
-RUN yum install -y mysql mysql-server; yum clean all;
+RUN yum install -y mariadb-server mariadb; yum clean all;
 RUN echo "NETWORKING=yes" > /etc/sysconfig/network
 # start mysqld to create initial tables
 # RUN service mysqld start
-RUN systemctl start mysqld
+#RUN systemctl start mysqld
+RUN systemctl start mariadb
 
 # add repo to install php 5.5.X
 RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
