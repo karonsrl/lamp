@@ -32,6 +32,8 @@ RUN yum install -y openssh-server openssh-clients passwd; yum clean all;
 RUN ssh-keygen -q -N "" -t dsa -f /etc/ssh/ssh_host_dsa_key && ssh-keygen -q -N "" -t rsa -f /etc/ssh/ssh_host_rsa_key 
 RUN sed -ri 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config && echo 'root:changeme' | chpasswd
 
+VOLUME /var/www/html
+
 ADD phpinfo.php /var/www/html/
 ADD supervisord.conf /etc/
 EXPOSE 22 80
