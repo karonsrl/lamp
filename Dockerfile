@@ -21,8 +21,10 @@ RUN yum -y install --setopt=tsflags=nodocs epel-release && \
     yum -y update && yum clean all
 
 
+
 # Fix permissions to allow for running on openshift
 COPY fix-permissions.sh ./
+RUN chmod +x ./fix-permissions.sh
 RUN ./fix-permissions.sh /var/lib/mysql/   && \
     ./fix-permissions.sh /var/log/mariadb/ && \
     ./fix-permissions.sh /var/run/
