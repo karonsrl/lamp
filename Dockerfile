@@ -14,7 +14,7 @@ RUN echo "NETWORKING=yes" > /etc/sysconfig/network
 # start mysqld to create initial tables
 # RUN service mysqld start
 #RUN systemctl start mysqld
-RUN systemctl start mariadb
+#RUN systemctl start mariadb
 
 # add repo to install php 5.5.X
 RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
