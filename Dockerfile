@@ -1,79 +1,38 @@
-FROM centos:latest
+FROM centos:7
 MAINTAINER Riccardo Manuelli
 
 # install http
-# RUN rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-RUN yum -y install epel-release; yum clean all;
+RUN yum -y install epel-release httpd mariadb mariadb-server bind-utils pwgen psmisc hostname wget; yum clean all;
 
-# install httpd
-RUN yum -y install httpd vim-enhanced bash-completion unzip mariadb initscripts; yum clean all;
+RUN yum clean all && yum makecache fast && yum -y update \
+    && yum -y install https://mirror.webtatic.com/yum/el7/webtatic-release.rpm && yum -y update \
+    && yum -y install git composer php56w php56w-cli php-56w-common php56w-opcache php56w-mysql php56w-mbstring php56w-xml php56w-gd php56w-pear php56w-intl \
+    && yum -y install php-drush-drush postfix tcping which && yum clean all
 
-# install mysql
-#RUN yum install -y mariadb mariadb-server; yum clean all;
-#RUN echo "NETWORKING=yes" > /etc/sysconfig/network
-# start mysqld to create initial tables
-# RUN service mysqld start
-# RUN systemctl start mysqld
+RUN chown apache: /var/www/html
 
-RUN yum -y install --setopt=tsflags=nodocs epel-release && \
-    yum -y install --setopt=tsflags=nodocs mariadb-server bind-utils pwgen psmisc hostname && \
-    yum -y erase vim-minimal && \
-    yum -y update && yum clean all
-
-#
-#If you do not want to provide a password for the mariadb root
-#i.e. to not pass the MYSQL_ROOT_PASSWORD enviroment variable
-#at runtime when creating the container, just give some value
-#to here. Otherwise, leave it null (default).
-#ENV MYSQL_ALLOW_EMPTY_PASSWORD=
-
-ENV MYSQL_ROOT_PASSWORD=root
-
-# Fix permissions to allow for running on openshift
-COPY fix-permissions.sh ./
-RUN chmod +x ./fix-permissions.sh
-RUN ./fix-permissions.sh /var/lib/mysql/   && \
-    ./fix-permissions.sh /var/log/mariadb/ && \
-    ./fix-permissions.sh /var/run/
-
-# add repo to install php 5.5.X
-RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-
-# install php 5.5.X
-RUN yum --enablerepo=remi,remi-php55 install -y php php-mysql php-devel php-gd php-pecl-memcache php-pspell php-snmp php-xmlrpc php-xml; yum clean all;
-
-# install supervisord
-# RUN yum install -y python-pip && pip install "pip>=1.4,<1.5" --upgrade; yum clean all;
-# -- RUN yum install -y python-pip; yum clean all;
-# RUN pip install supervisor
-
-# install sshd
-# RUN yum install -y openssh-server openssh-clients passwd; yum clean all;
-
-# RUN ssh-keygen -q -N "" -t dsa -f /etc/ssh/ssh_host_dsa_key && ssh-keygen -q -N "" -t rsa -f /etc/ssh/ssh_host_rsa_key
-# RUN sed -ri 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config && echo 'root:changeme' | chpasswd
-
-COPY docker-entrypoint.sh /
-
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
-
+# Setup apache conf
+COPY config/php.ini /etc/php.ini
 
 VOLUME /var/www/html
+EXPOSE 80
+#ENTRYPOINT ["/usr/sbin/httpd"]
+CMD ["-DFOREGROUND"]
 
-ADD phpinfo.php /var/www/html/
-#ADD supervisord.conf /etc/
+# installs from mysql public repo
+RUN wget http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm -d && \
+    yum localinstall mysql-community-release-el7-5.noarch.rpm -y && \
+    yum install mysql-community-server -y && \
+    rm mysql-community-release-el7-5.noarch.rpm && \
+    yum clean all
 
+ENV PATH $PATH:/usr/local/mysql/bin:/usr/local/mysql/scripts
 
-
-# Place VOLUME statement below all changes to /var/lib/mysql
+WORKDIR /usr/local/mysql
 VOLUME /var/lib/mysql
 
-# By default will run as random user on openshift and the mysql user (27)
-# everywhere else
-USER 27
+ENV MYSQL_ROOT_PASSWORD=mariadb
+ADD docker-entrypoint.sh /entrypoint.sh
 
-EXPOSE 80 3306
-
-CMD ["mysqld_safe"]
-# CMD ["supervisord", "-n"]
+EXPOSE 3306
+CMD ["/entrypoint.sh","mysqld", "--datadir=/var/lib/mysql", "--user=mysql"]
