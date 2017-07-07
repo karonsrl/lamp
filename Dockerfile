@@ -6,7 +6,7 @@ MAINTAINER Riccardo Manuelli
 RUN yum -y install epel-release; yum clean all;
 
 # install httpd
-RUN yum -y install httpd vim-enhanced bash-completion unzip mariadb; yum clean all;
+RUN yum -y install httpd vim-enhanced bash-completion unzip mariadb initscripts; yum clean all;
 
 # install mysql
 #RUN yum install -y mariadb mariadb-server; yum clean all;
@@ -15,12 +15,19 @@ RUN yum -y install httpd vim-enhanced bash-completion unzip mariadb; yum clean a
 # RUN service mysqld start
 # RUN systemctl start mysqld
 
-RUN yum -y install --setopt=tsflags=nodocs epel-release && \ 
-    yum -y install --setopt=tsflags=nodocs mariadb-server bind-utils pwgen psmisc hostname && \ 
+RUN yum -y install --setopt=tsflags=nodocs epel-release && \
+    yum -y install --setopt=tsflags=nodocs mariadb-server bind-utils pwgen psmisc hostname && \
     yum -y erase vim-minimal && \
     yum -y update && yum clean all
 
+#
+#If you do not want to provide a password for the mariadb root
+#i.e. to not pass the MYSQL_ROOT_PASSWORD enviroment variable
+#at runtime when creating the container, just give some value
+#to here. Otherwise, leave it null (default).
+#ENV MYSQL_ALLOW_EMPTY_PASSWORD=
 
+ENV MYSQL_ROOT_PASSWORD=root
 
 # Fix permissions to allow for running on openshift
 COPY fix-permissions.sh ./
@@ -29,8 +36,6 @@ RUN ./fix-permissions.sh /var/lib/mysql/   && \
     ./fix-permissions.sh /var/log/mariadb/ && \
     ./fix-permissions.sh /var/run/
 
-COPY docker-entrypoint.sh /
-
 # add repo to install php 5.5.X
 RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 
@@ -38,23 +43,28 @@ RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 RUN yum --enablerepo=remi,remi-php55 install -y php php-mysql php-devel php-gd php-pecl-memcache php-pspell php-snmp php-xmlrpc php-xml; yum clean all;
 
 # install supervisord
-RUN yum install -y python-pip && pip install "pip>=1.4,<1.5" --upgrade; yum clean all;
-# RUN yum install -y python-pip; yum clean all;
-RUN pip install supervisor
+# RUN yum install -y python-pip && pip install "pip>=1.4,<1.5" --upgrade; yum clean all;
+# -- RUN yum install -y python-pip; yum clean all;
+# RUN pip install supervisor
 
 # install sshd
-RUN yum install -y openssh-server openssh-clients passwd; yum clean all;
+# RUN yum install -y openssh-server openssh-clients passwd; yum clean all;
 
-RUN ssh-keygen -q -N "" -t dsa -f /etc/ssh/ssh_host_dsa_key && ssh-keygen -q -N "" -t rsa -f /etc/ssh/ssh_host_rsa_key 
-RUN sed -ri 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config && echo 'root:changeme' | chpasswd
+# RUN ssh-keygen -q -N "" -t dsa -f /etc/ssh/ssh_host_dsa_key && ssh-keygen -q -N "" -t rsa -f /etc/ssh/ssh_host_rsa_key
+# RUN sed -ri 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config && echo 'root:changeme' | chpasswd
+
+COPY docker-entrypoint.sh /
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+
 
 VOLUME /var/www/html
 
 ADD phpinfo.php /var/www/html/
-ADD supervisord.conf /etc/
-EXPOSE 22 80
+#ADD supervisord.conf /etc/
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+
 
 # Place VOLUME statement below all changes to /var/lib/mysql
 VOLUME /var/lib/mysql
@@ -63,6 +73,7 @@ VOLUME /var/lib/mysql
 # everywhere else
 USER 27
 
-EXPOSE 3306
+EXPOSE 80 3306
 
-CMD ["mysqld_safe", "supervisord", "-n"]
+CMD ["mysqld_safe"]
+# CMD ["supervisord", "-n"]
